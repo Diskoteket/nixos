@@ -4,26 +4,25 @@
 
 { config, pkgs, ... }:
 
+# For the importing of Home manager, we need to do the following:
+#   sudo nix-channel --add https://github.com/nix-community/home-manager/archive/release-23.11.tar.gz home-manager
+#   sudo nix-channel --update
+
 {
   imports =
     [ # Include the results of the hardware scan.
       ./hardware-configuration.nix
-      <home-manager/nixos>
+      <home-manager/nixos> 
     ];
 
-  #home-manager.users.mathias.imports = [ ./home.nix  ];
-
-  home-manager.users.mathias = { pkgs, ... }: {
-  home.stateVersion = "23.11";  
-  home.packages = [ ];
-  };
+  home-manager.users.tim.imports = [ ./home.nix ];
 
   # Bootloader.
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
 
-  networking.hostName = "nixos"; # Define your hostname.
-  networking.wireless.enable = true;  # Enables wireless support via wpa_supplicant.
+  networking.hostName = "discopad"; # Define your hostname.
+  # networking.wireless.enable = true;  # Enables wireless support via wpa_supplicant.
 
   # Configure network proxy if necessary
   # networking.proxy.default = "http://user:password@proxy:port/";
@@ -50,32 +49,16 @@
     LC_TIME = "sv_SE.UTF-8";
   };
 
+  # Enable vm stuff
+  services.qemuGuest.enable = true;
+  services.spice-vdagentd.enable = true;
+
   # Enable the X11 windowing system.
   services.xserver.enable = true;
 
-  # Enable the XFCE Desktop Environment.
+  # Enable the GNOME Desktop Environment.
   services.xserver.displayManager.gdm.enable = true;
   services.xserver.desktopManager.gnome.enable = true;
-  
-  environment.gnome.excludePackages = (with pkgs; [
-  gnome-photos
-  gnome-tour
-]) ++ (with pkgs.gnome; [
-  cheese # webcam tool
-  gnome-music
-  gnome-terminal
-  gedit # text editor
-  epiphany # web browser
-  geary # email reader
-  evince # document viewer
-  gnome-characters
-  totem # video player
-  tali # poker game
-  iagno # go game
-  hitori # sudoku game
-  atomix # puzzle game
-]);
-
 
   # Configure keymap in X11
   services.xserver = {
@@ -110,59 +93,52 @@
   # services.xserver.libinput.enable = true;
 
   # Define a user account. Don't forget to set a password with ‘passwd’.
-  users.users.mathias = {
+  users.users.tim = {
     isNormalUser = true;
-    description = "mathias";
+    description = "tim";
     extraGroups = [ "networkmanager" "wheel" ];
-    shell = pkgs.zsh;
     packages = with pkgs; [
       firefox
-      google-chrome
     #  thunderbird
     ];
+
   };
 
   # Allow unfree packages
   nixpkgs.config.allowUnfree = true;
-
+   
+  # Install patched fonts with icons from nerdfonts
+  fonts.packages = with pkgs; [
+    (nerdfonts.override { fonts = [ "Hack" ]; })
+  ];
+         
+  # Enable Zsh system wide and set default Shell for Tim.
   programs.zsh.enable = true;
+  users.users.tim.shell = pkgs.zsh;
 
   # List packages installed in system profile. To search, run:
   # $ nix search wget
   environment.systemPackages = with pkgs; [
-    vim # Do not forget to add an editor to edit configuration.nix! The Nano editor is also installed by default.
-    wget
-    #pkgs.virtualbox
-    pkgs.dconf
-    pkgs.vagrant
-    pkgs.packer
-    pkgs.terraform
-    pkgs.vscode
-    pkgs.slack
-    pkgs.git
-    pkgs.gh
-    pkgs.google-chrome
-    pkgs.zsh
-    pkgs.wgnord
-    pkgs.wireguard-tools
-    pkgs.openresolv
-    pkgs.gnomeExtensions.gnordvpn-local
-    pkgs.wireguard-go
-    pkgs.gnome2.GConf
-    pkgs.blackbox-terminal
-    cmake
-    libgit2
-    rustup
-    htop
-    btop
-    tailscale
-    docker
-    minecraft
-    dropbox
-    kubectl
-    minikube
-    lazygit
-    ansible
+  #  vim # Do not forget to add an editor to edit configuration.nix! The Nano editor is also installed by default.
+  #  wget
+    spice-vdagent
+
+    # Add Vim, plugins and set .vimrc
+    ((vim_configurable.override {  }).customize{
+      name = "vim";
+      # Install plugins for example for syntax highlighting of nix files
+      vimrcConfig.packages.myplugins = with pkgs.vimPlugins; {
+        start = [ vim-nix ];
+        opt = [];
+      };
+      vimrcConfig.customRC = ''
+        " your custom vimrc
+        :set backspace=indent,eol,start
+        syntax on
+	:set number
+      '';
+    }
+   )
   ];
 
   # Some programs need SUID wrappers, can be configured further or are
@@ -191,9 +167,5 @@
   # Before changing this value read the documentation for this option
   # (e.g. man configuration.nix or on https://nixos.org/nixos/options.html).
   system.stateVersion = "23.11"; # Did you read the comment?
-  hardware.bluetooth.enable = true;
-  hardware.bluetooth.powerOnBoot = true;
-  virtualisation.virtualbox.host.enable = true;
-  virtualisation.virtualbox.guest.enable = true;
 
 }
